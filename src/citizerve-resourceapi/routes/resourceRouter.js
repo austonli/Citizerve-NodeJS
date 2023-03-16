@@ -1,5 +1,16 @@
 /* eslint-disable no-param-reassign */
 const express = require('express');
+const { trace } = require("@opentelemetry/api");
+const { BasicTracerProvider, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { AzureMonitorTraceExporter } = require("@azure/monitor-opentelemetry-exporter");
+
+const provider = new BasicTracerProvider();
+const exporter = new AzureMonitorTraceExporter({
+  connectionString: "InstrumentationKey=dc3f6ef1-b2bb-4b05-a9c7-c4d6dca31f0a;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/",
+});
+provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+provider.register();
+const tracer = trace.getTracer("example-basic-tracer-node");
 
 function routes(Resource) {
   const resourceRouter = express.Router();
@@ -22,6 +33,9 @@ function routes(Resource) {
       }
       Resource.find(query, (err, resources) => {
         if (err) {
+          let span = tracer.startSpan("hello");
+          span.recordException(error);
+          span.end();
           return res.send(err);
         }
         return res.json(resources);
@@ -44,6 +58,9 @@ function routes(Resource) {
     const query = { resourceId: req.params.resourceId };
     Resource.find(query, (err, resources) => {
       if (err) {
+        let span = tracer.startSpan("hello");
+        span.recordException(error);
+        span.end();
         return res.send(err);
       }
       if (resources[0]) {
@@ -77,6 +94,9 @@ function routes(Resource) {
       });
       resource.save((err) => {
         if (err) {
+          let span = tracer.startSpan("hello");
+          span.recordException(error);
+          span.end();
           return res.send(err);
         }
         return res.json(resource);
@@ -85,6 +105,9 @@ function routes(Resource) {
     .delete((req, res) => {
       req.resource.remove((err) => {
         if (err) {
+          let span = tracer.startSpan("hello");
+          span.recordException(error);
+          span.end();
           return res.send(err);
         }
         return res.sendStatus(204);
